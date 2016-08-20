@@ -6,10 +6,12 @@ Forward ports from an LXD host to containers. Supports a command line interface 
 
 ## Download
 
-The latest binaries can be downloaded from the [releases page](https://dev.justinjudd.org/justin/lxd-port-forward/releases).
+The latest binaries can be downloaded from the [releases page](https://dev.justinjudd.org/justin/lxd-port-forward/releases) or downloaded using
 
-You can grab the go library with  
- `go get dev.justinjudd.org/justin/lxd-port-forward/forward`
+`go get dev.justinjudd.org/justin/lxd-port-forward`
+
+that will also allow you to use the `dev.justinjudd.org/justin/lxd-port-forward/forward` library in custom code if desired.
+
 
 ## Usage Guidance
 
