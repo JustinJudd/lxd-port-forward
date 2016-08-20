@@ -31,3 +31,5 @@ The command line option could then be used as follows.
 While `./lxd-port-forward enable=false` to tear down the port forwarding rules.
 
 LXD Port Forward can also run in daemon mode by calling `./lxd-port-forward --daemon`. It will read the `config.yaml` file, enable any port forwarding rules for already active containers, and then watch if listed containers are brought up or down, and add or remove port forwarding rules accordingly.
+
+Systemd support can be found in the [init subdirectory](https://dev.justinjudd.org/justin/lxd-port-forward/src/master/init) so that LXD Port Forward can be run as a service.
