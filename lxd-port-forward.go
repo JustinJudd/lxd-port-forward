@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"dev.justinjudd.org/justin/lxd-port-forward/forward"
+	"github.com/JustinJudd/lxd-port-forward/forward"
 
 	"github.com/lxc/lxd/shared/gnuflag"
 )
