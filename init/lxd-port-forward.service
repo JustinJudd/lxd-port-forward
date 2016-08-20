@@ -1,0 +1,23 @@
+[Unit]
+Description=LXD Port Forwarding service
+Documentation=https://dev.justinjudd.org/justin/lxd-port-forward
+After=network-online.target
+After=lxd-containers.service
+Wants=network-online.target systemd-networkd-wait-online.service
+
+[Service]
+Restart=on-failure
+
+; User and group the process will run as.
+User=root
+Group=root
+
+; Letsencrypt-issued certificates will be written to this directory.
+Environment=HOME=/etc/lxd-port-forward
+WorkingDirectory=/etc/lxd-port-forward
+
+ExecStart=/usr/local/bin/lxd-port-forward --daemon
+ExecReload=/bin/kill -USR1 $MAINPID
+
+[Install]
+WantedBy=multi-user.target
