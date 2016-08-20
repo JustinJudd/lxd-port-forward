@@ -16,7 +16,7 @@ You can grab the go library with
 The config file format is yaml in the following format and should be saved as `config.yaml`.
 
 ``` yaml
-  ---
+---
 container1:
 - protocol: tcp
   "80": 80
