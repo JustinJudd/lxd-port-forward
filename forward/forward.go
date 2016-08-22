@@ -5,9 +5,11 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/lxc/lxd"
+	"github.com/lxc/lxd/shared"
 	"gopkg.in/yaml.v2"
 )
 
@@ -168,6 +170,10 @@ func (f Forwarder) ForwardContainer(container string) error {
 		return fmt.Errorf("unable to get container state for container %s: %s", container, err)
 	}
 
+	if state.StatusCode != shared.Running {
+		return fmt.Errorf("Container %s is not currently running", container)
+	}
+
 	// Get list of IP addresses on the container to forward to
 	ip4Addresses := []string{}
 	ip6Addresses := []string{}
@@ -201,30 +207,49 @@ func (f Forwarder) ForwardContainer(container string) error {
 	}
 
 	// Create a new custom chain for the IPTable rules for just this container
-	customChain := getChain(container)
-	err = iptable.NewChain(IPTable, customChain)
+	customDstChain := getChain(container, Dst)
+	customSrcChain := getChain(container, Src)
+
+	err = iptable.NewChain(IPTable, customDstChain)
 	if err != nil {
 		return err
 	}
-	err = ip6table.NewChain(IPTable, customChain)
+	err = iptable.NewChain(IPTable, customSrcChain)
+	if err != nil {
+		return err
+	}
+	err = ip6table.NewChain(IPTable, customDstChain)
+	if err != nil {
+		return err
+	}
+	err = ip6table.NewChain(IPTable, customSrcChain)
 	if err != nil {
 		return err
 	}
 
 	// Tell IPTables when to use our custom chain
-	err = iptable.Insert(IPTable, "PREROUTING", 1, []string{
-		"-m", "addrtype",
-		"--dst-type", "LOCAL",
-		"-j", customChain,
-	}...)
+	err = iptable.Insert(IPTable, "PREROUTING", 1, getChainForwardRule(container, IPv4, Dst)...)
 	if err != nil {
 		return err
 	}
-	err = ip6table.Insert(IPTable, "PREROUTING", 1, []string{
-		"-m", "addrtype",
-		"--dst-type", "LOCAL",
-		"-j", customChain,
-	}...)
+	err = ip6table.Insert(IPTable, "PREROUTING", 1, getChainForwardRule(container, IPv6, Dst)...)
+	if err != nil {
+		return err
+	}
+	err = iptable.Insert(IPTable, "OUTPUT", 1, getChainForwardRule(container, IPv4, Dst)...)
+	if err != nil {
+		return err
+	}
+	err = ip6table.Insert(IPTable, "OUTPUT", 1, getChainForwardRule(container, IPv6, Dst)...)
+	if err != nil {
+		return err
+	}
+
+	err = iptable.Insert(IPTable, "POSTROUTING", 1, getChainForwardRule(container, IPv4, Src)...)
+	if err != nil {
+		return err
+	}
+	err = ip6table.Insert(IPTable, "POSTROUTING", 1, getChainForwardRule(container, IPv6, Src)...)
 	if err != nil {
 		return err
 	}
@@ -235,23 +260,17 @@ func (f Forwarder) ForwardContainer(container string) error {
 		for hostPort, containerPort := range portForwards.Ports {
 
 			for _, address := range ip4Addresses {
-				iptable.Append(IPTable, customChain, []string{
-					//"-i", iface,
-					"-p", protocol,
-					"--dport", hostPort,
-					"-j", "DNAT",
-					"--to", fmt.Sprintf("%s:%d", address, containerPort),
-				}...)
+				iptable.Append(IPTable, customDstChain, getPortForwardRule(protocol, address, strconv.Itoa(containerPort), hostPort, IPv4, Dst)...)
+
+				iptable.Append(IPTable, customSrcChain, getPortForwardRule(protocol, address, strconv.Itoa(containerPort), hostPort, IPv4, Src)...)
+
 			}
 
 			for _, address := range ip6Addresses {
-				ip6table.Append(IPTable, customChain, []string{
-					//"-i", iface,
-					"-p", protocol,
-					"--dport", hostPort,
-					"-j", "DNAT",
-					"--to", fmt.Sprintf("[%s]:%d", address, containerPort),
-				}...)
+				ip6table.Append(IPTable, customDstChain, getPortForwardRule(protocol, address, strconv.Itoa(containerPort), hostPort, IPv6, Dst)...)
+
+				ip6table.Append(IPTable, customSrcChain, getPortForwardRule(protocol, address, strconv.Itoa(containerPort), hostPort, IPv6, Src)...)
+
 			}
 
 		}
@@ -262,7 +281,9 @@ func (f Forwarder) ForwardContainer(container string) error {
 
 // ReverseContainer removes port forwarding for the provided container
 func (f Forwarder) ReverseContainer(container string) error {
-	customChain := getChain(container)
+	customDstChain := getChain(container, Dst)
+	customSrcChain := getChain(container, Src)
+
 	iptable, err := iptables.New()
 	if err != nil {
 		return err
@@ -272,27 +293,24 @@ func (f Forwarder) ReverseContainer(container string) error {
 		return err
 	}
 
-	err = iptable.Delete(IPTable, "PREROUTING", []string{
-		"-m", "addrtype",
-		"--dst-type", "LOCAL",
-		"-j", customChain,
-	}...)
-	if err != nil {
-		return err
-	}
-	err = ip6table.Delete(IPTable, "PREROUTING", []string{
-		"-m", "addrtype",
-		"--dst-type", "LOCAL",
-		"-j", customChain,
-	}...)
-	if err != nil {
-		return err
-	}
+	iptable.Delete(IPTable, "PREROUTING", getChainForwardRule(container, IPv4, Dst)...)
+	ip6table.Delete(IPTable, "PREROUTING", getChainForwardRule(container, IPv6, Dst)...)
 
-	iptable.ClearChain(IPTable, customChain)
-	iptable.DeleteChain(IPTable, customChain)
-	ip6table.ClearChain(IPTable, customChain)
-	ip6table.DeleteChain(IPTable, customChain)
+	iptable.Delete(IPTable, "OUTPUT", getChainForwardRule(container, IPv4, Dst)...)
+	ip6table.Delete(IPTable, "OUTPUT", getChainForwardRule(container, IPv6, Dst)...)
+
+	iptable.Delete(IPTable, "POSTROUTING", getChainForwardRule(container, IPv4, Src)...)
+	ip6table.Delete(IPTable, "POSTROUTING", getChainForwardRule(container, IPv6, Src)...)
+
+	iptable.ClearChain(IPTable, customDstChain)
+	iptable.DeleteChain(IPTable, customDstChain)
+	iptable.ClearChain(IPTable, customSrcChain)
+	iptable.DeleteChain(IPTable, customSrcChain)
+
+	ip6table.ClearChain(IPTable, customDstChain)
+	ip6table.DeleteChain(IPTable, customDstChain)
+	ip6table.ClearChain(IPTable, customSrcChain)
+	ip6table.DeleteChain(IPTable, customSrcChain)
 
 	return nil
 }
@@ -325,7 +343,12 @@ func (f Forwarder) Watch() {
 			}
 			switch message {
 			case ContainerStarted:
-				f.ForwardContainer(container)
+				go func() {
+					// Wait a few seconds for the newly running container to get an IP address
+					time.Sleep(2 * time.Second)
+					f.ForwardContainer(container)
+				}()
+
 			case ContainerStopped:
 				f.ReverseContainer(container)
 			}
@@ -334,9 +357,4 @@ func (f Forwarder) Watch() {
 	}
 
 	f.Monitor([]string{}, handler)
-}
-
-// getChain returns the custom IPTables chain that should be used for the rules for a container
-func getChain(container string) string {
-	return fmt.Sprintf("LXD-%s", container)
 }
