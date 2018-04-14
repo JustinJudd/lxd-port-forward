@@ -25,7 +25,7 @@ container1:
   "443": 443
 ---
 ```
-The above config file would map standard http and https ports from the LXD host to the container with the name `container1`.
+The above config file would map standard http and https ports from the LXD host to the container with the name `container1`, where the right-side ports are the ports on the host, and the left-side ports are the ports on the container.
 
 The command line option could then be used as follows.
 `./lxd-port-forward`
