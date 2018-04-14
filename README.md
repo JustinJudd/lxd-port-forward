@@ -30,8 +30,8 @@ The above config file would map standard http and https ports from the LXD host 
 The command line option could then be used as follows.
 `./lxd-port-forward`
  to enable the port forwarding rules.
-While `./lxd-port-forward enable=false` to tear down the port forwarding rules.
+While `./lxd-port-forward -enable=false` to tear down the port forwarding rules.
 
-LXD Port Forward can also run in daemon mode by calling `./lxd-port-forward --daemon`. It will read the `config.yaml` file, enable any port forwarding rules for already active containers, and then watch if listed containers are brought up or down, and add or remove port forwarding rules accordingly.
+LXD Port Forward can also run in daemon mode by calling `./lxd-port-forward -daemon`. It will read the `config.yaml` file, enable any port forwarding rules for already active containers, and then watch if listed containers are brought up or down, and add or remove port forwarding rules accordingly.
 
 Systemd support can be found in the [init subdirectory](https://github.com/JustinJudd/lxd-port-forward/tree/master/init) so that LXD Port Forward can be run as a service.
