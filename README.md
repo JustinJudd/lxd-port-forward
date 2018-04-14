@@ -8,7 +8,7 @@ Forward ports from an LXD host to containers. Supports a command line interface 
 
 The latest binaries can be downloaded from the [releases page](https://github.com/JustinJudd/lxd-port-forward/releases) or downloaded using
 
-`go get github.com/JustinJudd/lxd-port-forward`
+`go get github.com/justinjudd/lxd-port-forward`
 
 that will also allow you to use the `github.com/JustinJudd/lxd-port-forward/forward` library in custom code if desired.
 
