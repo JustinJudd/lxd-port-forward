@@ -1,13 +1,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/JustinJudd/lxd-port-forward/forward"
-
-	"github.com/lxc/lxd/shared/gnuflag"
+	"github.com/justinjudd/lxd-port-forward/forward"
 )
 
 var (
@@ -20,13 +19,13 @@ var (
 
 func main() {
 
-	gnuflag.BoolVar(&daemonize, "daemon", false, "Run in daemon mode")
-	gnuflag.BoolVar(&enable, "enable", true, "Enable port forwarding if true")
-	gnuflag.StringVar(&container, "container", "", "Name of container to forward ports to. Expects --ports to be provided.")
-	gnuflag.StringVar(&portList, "ports", "", "Ports to forward and to forward to in the following format protocol://HostPort1:ContainerPort1,HostPort2:ContainerPort2. Expects --container to be provided.")
-	gnuflag.StringVar(&configFile, "config", "config.yaml", "Port Forwarding config file in YAML format; default option for container and port mappings")
+	flag.BoolVar(&daemonize, "daemon", false, "Run in daemon mode")
+	flag.BoolVar(&enable, "enable", true, "Enable port forwarding if true")
+	flag.StringVar(&container, "container", "", "Name of container to forward ports to. Expects --ports to be provided.")
+	flag.StringVar(&portList, "ports", "", "Ports to forward and to forward to in the following format protocol://HostPort1:ContainerPort1,HostPort2:ContainerPort2. Expects --container to be provided.")
+	flag.StringVar(&configFile, "config", "config.yaml", "Port Forwarding config file in YAML format; default option for container and port mappings")
 
-	gnuflag.Parse(true)
+	flag.Parse()
 
 	config := forward.NewConfig()
 
